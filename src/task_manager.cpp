@@ -29,6 +29,9 @@ void TaskManager::run_tasks()
         nanosleep(&delay, NULL);
     }
     
+
+    // ROTARY ENCODER CODE 
+    
     // gpio_set_function(5, PI_FUNCTION::INPUT); // ENC B
     // gpio_set_function(6, PI_FUNCTION::INPUT); // ENC A
     // int counter = 0;

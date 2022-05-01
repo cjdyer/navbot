@@ -15,6 +15,12 @@ public:
     void enable();
     void disable();
 
+    int64_t get_position();
+    void set_position(int64_t position);
+    void brake_mode_active();
+
+    void debug();
+
 private:
 
     const uint8_t m_pin_dir;

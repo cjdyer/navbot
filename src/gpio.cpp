@@ -2,13 +2,14 @@
 #include <sys/ioctl.h>
 #include <string.h>
 
-#define PWM_FREQ        100000
+#define PWM_FREQ        375000
 #define PWM_RANGE       20000
 #define CLOCK_KHZ       375000
 #define CLK_PASSWD      0x5A000000
 
 void GPIO::gpio_init()
 {
+    VC_MSG msg;
     int fd = open("/dev/mem", O_RDWR | O_SYNC);
 
     if (fd < 0)
@@ -25,7 +26,11 @@ void GPIO::gpio_init()
     sys_memory  = static_cast<volatile uint32_t *>(mmap(0,  sys_len, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED | MAP_LOCKED, fd,  sys_base_address));
 
     // Virtual Memory
-    vir_dma_memory = static_cast<volatile uint32_t *>(mmap(0, vir_dma_len, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED | MAP_LOCKED, fd, vir_dma_base_address));
+    msg = {.tag=0x3000c, .blen=12, .dlen=12, .uints={0x1000, 0x1000, (1 << 2 + 1 << 4)}};
+    uint32_t dma_mem_h = msg_mbox(mail_fd, &msg);
+    msg = {.tag=0x3000d, .blen=4, .dlen=4, .uints={dma_mem_h}};
+    bus_dma_memory = static_cast<volatile uint32_t *>((dma_mem_h ? (void*)msg_mbox(mail_fd, &msg) : 0));
+    vir_dma_memory = static_cast<volatile uint32_t *>(mmap(0, vir_dma_len, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED | MAP_LOCKED, fd, (uint32_t)((uint64_t)bus_dma_memory & ~0xC0000000)));
 
     close(fd);
 }
@@ -70,37 +75,29 @@ void GPIO::pwm_init()
     dma_memory[(int)PI_DMA_REGISTERS::CS_5]    = 1 << 31; // Reset DMA 5 
     dma_memory[(int)PI_DMA_REGISTERS::ENABLE] |= 1 << 5;  // Enable DMA 5 
     
-    DMA_CB *cbs = (DMA_CB*)vir_dma_memory;
-    uint32_t *pindata = (uint32_t *)(cbs + 4);
-    uint32_t *pwmdata = pindata + 1;
-
-    memset(cbs, 0, sizeof(DMA_CB) * 4);
-
-    // Transfers are triggered by PWM request
-    cbs[0].ti = cbs[1].ti = cbs[2].ti = cbs[3].ti = (1 << 6) | (5 << 16);
-
-    // Control block 0 and 2: clear & set LED pin, 4-byte transfer
-    cbs[0].srce_ad = cbs[2].srce_ad = (uint32_t)((uint64_t)(pindata) - (uint64_t)vir_dma_memory + bus_dma_base_address);
-    cbs[0].dest_ad = gpio_memory[(int)PI_GPIO_REGISTERS::CLR0];
-    cbs[2].dest_ad = gpio_memory[(int)PI_GPIO_REGISTERS::SET0];
-    cbs[0].tfr_len = cbs[2].tfr_len = 4;
-
-    // Control block 1 and 3: update PWM FIFO (to clear DMA request)
-    cbs[1].srce_ad = cbs[3].srce_ad = (uint32_t)((uint64_t)(pwmdata) - (uint64_t)vir_dma_memory + bus_dma_base_address);
-    cbs[1].dest_ad = cbs[3].dest_ad = pwm_memory[(int)PI_PWM_REGISTERS::FIF];
-    cbs[1].tfr_len = cbs[3].tfr_len = 4;
-
-    // Link control blocks 0 to 3 in endless loop
-    for (int n = 0; n < 4; n++)
-        cbs[n].next_cb = (uint32_t)((uint64_t)(&cbs[(n + 1) % 4]) - (uint64_t)vir_dma_memory + bus_dma_base_address); 
-
-    dma_memory[(int)PI_DMA_REGISTERS::CONBLOK_5] = (uint32_t)((uint64_t)(&cbs[0]) - (uint64_t)vir_dma_memory + bus_dma_base_address); // Give first control block
-    dma_memory[(int)PI_DMA_REGISTERS::CS_5] = 2; // Clear end flag
-    dma_memory[(int)PI_DMA_REGISTERS::DEBUG_5] = 7; // Clear error bits
-    dma_memory[(int)PI_DMA_REGISTERS::CS_5] = 1; // Start DMA
-
+    DMA_TEST_DATA *dp = (DMA_TEST_DATA*)vir_dma_memory;
+    DMA_TEST_DATA dma_data = { 
+        .cbs = 
+        {
+          // TI      Srce addr          Dest addr        Len   Next CB
+            {0x50040, MEM(&dp->pindata), gpio_memory[(int)PI_GPIO_REGISTERS::SET0], 4, 0, MEM(&dp->cbs[1]), 0},  // 0
+            {0x50040, MEM(&dp->pwmdata), pwm_memory[(int)PI_PWM_REGISTERS::FIF]   , 4, 0, MEM(&dp->cbs[2]), 0},  // 1
+            {0x50040, MEM(&dp->pindata), gpio_memory[(int)PI_GPIO_REGISTERS::SET0], 4, 0, MEM(&dp->cbs[3]), 0},  // 2
+            {0x50040, MEM(&dp->pwmdata), pwm_memory[(int)PI_PWM_REGISTERS::FIF]   , 4, 0, MEM(&dp->cbs[0]), 0},  // 3
+        },
+        .pindata= 1 << 18,
+        .pwmdata = PWM_RANGE / 2
+    };
+    memcpy(dp, &dma_data, sizeof(dma_data));    // Copy data into uncached memory
+  
     // Disable PWM to change settings
     pwm_memory[(int)PI_PWM_REGISTERS::CTL] = 0;
+
+    if (pwm_memory[(int)PI_PWM_REGISTERS::STA] & 0x100)
+    {
+        printf("PWM bus error\n");
+        pwm_memory[(int)PI_PWM_REGISTERS::STA] = 0x100;
+    }
 
     int divi= (CLOCK_KHZ * 1000) / PWM_FREQ;
 
@@ -112,22 +109,28 @@ void GPIO::pwm_init()
 
     pwm_memory[(int)PI_PWM_REGISTERS::RNG1] = PWM_RANGE;
     pwm_memory[(int)PI_PWM_REGISTERS::FIF] =  (PWM_RANGE / 2);
-    pwm_memory[(int)PI_PWM_REGISTERS::DMA] = (1 << 31) | 1; // data threshold of 1 and enable
 }
 
-void GPIO::pwm_start(PI_PWM_CHANNEL channel)
+void GPIO::pwm_start()
 {
-    pwm_memory[(int)PI_PWM_REGISTERS::CTL] = 0x40;  // Use FIFO and Enable
-    usleep(10);
-    pwm_memory[(int)PI_PWM_REGISTERS::CTL] = 0;  // Use FIFO and Enable
-    usleep(10);
-    pwm_memory[(int)PI_PWM_REGISTERS::CTL] = 0x2121;  // Use FIFO and Enable
-    usleep(10);
-    std::cout << "End status : " << std::hex << pwm_memory[(int)PI_PWM_REGISTERS::STA] << std::endl;
+    pwm_memory[(int)PI_PWM_REGISTERS::DMA] = (1 << 31) | 1; // data threshold of 1 and enable
+    pwm_memory[(int)PI_PWM_REGISTERS::CTL] = 0x21;  // Use FIFO and Enable
 }
 
 void GPIO::pwm_stop()
 {
     pwm_memory[(int)PI_PWM_REGISTERS::CTL] = 0; // stop pwm
     pwm_memory[(int)PI_PWM_REGISTERS::DMA] = 0x707;
+}
+
+uint32_t GPIO::msg_mbox(int fd, VC_MSG *msgp)
+{
+    for (uint32_t i = msgp->dlen / 4; i <= msgp->blen / 4; i += 4)
+    {
+        msgp->uints[i++] = 0;
+    }
+    msgp->len = (msgp->blen + 6) * 4;
+    msgp->req = 0;
+    ioctl(fd, _IOWR(100, 0, void *), msgp);
+    return msgp->uints[0];
 }
