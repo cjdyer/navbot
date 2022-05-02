@@ -10,11 +10,10 @@ int main(int argc, char const *argv[])
     GPIO::gpio_set_function(18, GPIO::PI_FUNCTION::ALT_5); // Set Function to pwm
     GPIO::gpio_set_function(19, GPIO::PI_FUNCTION::ALT_5); // Set Function to pwm
 
-    GPIO::pwm_init();
     std::cout << "CHANNEL 1" << std::endl;
-    GPIO::pwm_start();
-    
-    sleep(5);
+    GPIO::pwm_start(GPIO::PI_PWM_CHANNEL::CHA_1);
+    GPIO::pwm_write(1024);
+    sleep(10);
 
     // for (size_t i = 0; i < 10; i++)
     // {
@@ -22,7 +21,7 @@ int main(int argc, char const *argv[])
     //     usleep(1);
     // }
 
-    GPIO::pwm_stop();
+    GPIO::pwm_stop(GPIO::PI_PWM_CHANNEL::CHA_1);
 
     // std::cout << "CHANNEL 2" << std::endl;
     // GPIO::pwm_start();

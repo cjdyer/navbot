@@ -1,6 +1,8 @@
 #pragma once
 
 #include "log.h"
+#include <thread>
+#include <atomic>
 #include <mutex>
 #include <unistd.h>
 #include <fcntl.h>
@@ -99,85 +101,31 @@ namespace GPIO
         DAT2 = 0x09  // channel 2 Data
     };
 
-    enum class PI_PWM_CHANNEL : bool
-    {
-        CHA_1 = false,
-        CHA_2 = true
-    };
-
-    // Page 33 - https://datasheets.raspberrypi.com/bcm2711/bcm2711-peripherals.pdf
-    // 0x140 is DMA5 channel base
-    // Only 3 are writable (listed in struct)
-    enum class PI_DMA_REGISTERS : uint16_t
-    {
-        CS_5 = 0x140,      // Channel 5 control and Status
-        CONBLOK_5 = 0x141, // Channel 5 control block address
-        DEBUG_5 = 0x148,   // Channel 5 debug
-        ENABLE = 0x3FC     // Global DMA bit Enable
-    };
-
-    // Mailbox command/response structure
-    typedef struct
-    {
-        uint32_t len,           // Overall length (bytes)
-            req,                // Zero for request, 1<<31 for response
-            tag,                // Command number
-            blen,               // Buffer length (bytes)
-            dlen;               // Data length (bytes)
-        uint32_t uints[32 - 5]; // Data (108 bytes maximum)
-    } VC_MSG __attribute__((aligned(16)));
-
-    typedef struct
-    {
-        uint32_t ti, // Transfer info
-            srce_ad, // Source address
-            dest_ad, // Destination address
-            tfr_len, // Transfer length
-            stride,  // Transfer stride
-            next_cb, // Next control block
-            debug,   // Debug register, zero in control block
-            unused;
-    } DMA_CB __attribute__((aligned(32)));
-
-    typedef struct
-    {
-        DMA_CB cbs[4];
-        uint32_t pindata, pwmdata;
-    } DMA_TEST_DATA;
-
     void gpio_init();
     void gpio_set_function(uint8_t pin, PI_FUNCTION function);
-    void gpio_write(uint8_t pin, bool output);
+    void gpio_write(uint8_t pin, PI_OUTPUT output);
     bool gpio_read(uint8_t pin);
     uint32_t sys_tick();
-    void pwm_init();
-    void pwm_start();
-    void pwm_write(uint8_t speed);
-    void pwm_stop(); // stops both channels
-    uint32_t msg_mbox(int fd, VC_MSG *msgp);
+    void pwm_start(uint8_t pin);
+    void pwm_stop();
+    static void pwm_run();
+    void pwm_write(uint32_t period_us, uint32_t duty_period_us);
+
+    static std::thread pwm_thread;
+    static std::atomic<uint32_t> pwm_period;
+    static std::atomic<uint32_t> pwm_duty_period;
+    static bool pwm_state;
+    static uint8_t pwm_pin;
 
     static constexpr uint32_t gpio_base_address = 0xFE200000;
-    static constexpr uint32_t gpio_len = 0x000000F4;
-    static constexpr uint32_t pwm_base_address = 0xFE20C000; // PWM 0
-    static constexpr uint32_t pwm_len = 0x00000028;
-    static constexpr uint32_t dma_base_address = 0xFE007000;
-    static constexpr uint32_t dma_len = 0x00000f00;
-    static constexpr uint32_t clk_base_address = 0xFE101000;
-    static constexpr uint32_t clk_len = 0x00000018;
-    static constexpr uint32_t sys_base_address = 0xFE003000;
-    static constexpr uint32_t sys_len = 0x0000001C;
-
-    static constexpr uint32_t vir_dma_len = 0x00001000;
+    static constexpr uint32_t gpio_len          = 0x000000F4;
+    static constexpr uint32_t pwm_base_address  = 0xFE20C000; // PWM 0
+    static constexpr uint32_t pwm_len           = 0x00000028;
+    static constexpr uint32_t sys_base_address  = 0xFE003000;
+    static constexpr uint32_t sys_len           = 0x0000001C;
 
     static volatile uint32_t *gpio_memory;
     static volatile uint32_t *pwm_memory;
-    static volatile uint32_t *dma_memory;
-    static volatile uint32_t *clk_memory;
     static volatile uint32_t *sys_memory;
-
-    #define MEM(a)  (uint32_t)((uint64_t)a - (uint64_t)vir_dma_memory + (uint64_t)bus_dma_memory)
-
-    static volatile uint32_t *vir_dma_memory;
-    static volatile uint32_t *bus_dma_memory;
 
 }; //namespace GPIO
