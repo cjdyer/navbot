@@ -1,4 +1,4 @@
-#include "motor.h"
+#include "dc_motor.h"
 #include "encoder.h"
 #include <chrono>
 
