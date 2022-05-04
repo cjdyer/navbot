@@ -1,27 +1,28 @@
 #pragma once
 
 #include <cstdint>
+#include <atomic>
+#include <thread>
+#include <iostream>
+#include <unistd.h>
 #include "gpio.h"
 
-class DCMOTOR
+class Motor
 {
+public: 
+    Motor(uint8_t pin_dir, uint8_t pin_pwm, uint8_t pin_enc_a, uint8_t pin_enc_b);
+    ~Motor();
 
-public:
-    
-    DCMOTOR(uint8_t pin_dir, uint8_t pin_pwm, uint8_t pin_enc_a, uint8_t pin_enc_b);
-    ~DCMOTOR() {}
-
-    void set_speed(uint8_t speed);
-    void enable();
-    void disable();
-
-    int64_t get_position();
-    void set_position(int64_t position);
-    void brake_mode_active();
-
-    void debug();
+    void encoder_position();
+    void run_with_pid_control(int target_speed);
+    void runMotor(int dir, int pwmVal);
 
 private:
+    // std::atomic<uint32_t> pos;
+    std::thread th;
+    int position;
+    long double speed;
+    float pwr;  
 
     const uint8_t m_pin_dir;
     const uint8_t m_pin_pwm;
@@ -30,4 +31,9 @@ private:
 
     uint16_t m_encoder_value;
 
-}; // class DCMOTOR
+    // PID constants
+    static constexpr float kp = 1;
+    static constexpr float kd = 0.025;
+    static constexpr float ki = 0.0;
+     
+};
