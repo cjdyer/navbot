@@ -6,6 +6,7 @@
 #include <iostream>
 #include <unistd.h>
 #include "gpio.h"
+#include "encoder.h"
 
 class Motor
 {
@@ -30,6 +31,7 @@ private:
     const uint8_t m_pin_enc_b;
 
     uint16_t m_encoder_value;
+    Encoder *m_encoder;
 
     // PID constants
     static constexpr float kp = 1;

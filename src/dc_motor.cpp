@@ -1,5 +1,4 @@
 #include "dc_motor.h"
-#include "encoder.h"
 #include <chrono>
 
 using namespace GPIO;
@@ -7,34 +6,25 @@ using namespace GPIO;
 Motor::Motor(uint8_t pin_dir, uint8_t pin_pwm, uint8_t pin_enc_a, uint8_t pin_enc_b) : m_pin_dir(pin_dir), m_pin_pwm(pin_pwm), m_pin_enc_a(pin_enc_a), m_pin_enc_b(pin_enc_b)
 {
     gpio_set_function(m_pin_dir, PI_FUNCTION::OUTPUT);
-    gpio_set_function(m_pin_pwm, PI_FUNCTION::ALT_0);
-    gpio_set_function(m_pin_enc_a, PI_FUNCTION::INPUT);
-    gpio_set_function(m_pin_enc_b, PI_FUNCTION::INPUT); // get a segmentation fault when included...
+    gpio_set_function(m_pin_pwm, PI_FUNCTION::OUTPUT);
 
     position = 0;
 
     pwr = 0; // start the pwd signal at 0 and increase to the required speed.
-    pwm_start(m_pin_pwm);
+    //pwm_start(m_pin_pwm);
 
-    std::cout << "constructor" << std::endl;
-    th = std::thread(&Motor::encoder_position, this);
+    m_encoder = new Encoder(m_pin_enc_a, m_pin_enc_b);
+
+
+    Log::log_info("Motor::Motor - Motor Instance Created");
+
 }
 
 Motor::~Motor()
 {
-    th.join();
-    pwm_stop();
-}
-
-void Motor::encoder_position() // Function to grab position data from encoder code, entered into thread to run continuously.
-{
-    Encoder E(m_pin_enc_a, m_pin_enc_b);
-    while (1)
-    {
-        speed = E.get_speed();
-        usleep(100000);
-    }
-
+    m_encoder->~Encoder();
+    //pwm_stop();
+    Log::log_info("Motor::Motor - Motor Instance Destroyed");
 }
 
 void Motor::run_with_pid_control(int target_speed) // Function to grab position data from encoder code, entered into thread to run continuously.
@@ -96,7 +86,7 @@ void Motor::run_with_pid_control(int target_speed) // Function to grab position 
 void Motor::runMotor(int dir, int pwmVal) // function to set the motor running
 {
     const uint8_t input_pwm_period = pwmVal*20/255;
-    pwm_write(20, pwmVal);   // analogue write gpio function is needed
+    //pwm_write(20, pwmVal);   // analogue write gpio function is needed
     if (dir == 1)
     {
         gpio_write(m_pin_dir, PI_OUTPUT::HIGH);

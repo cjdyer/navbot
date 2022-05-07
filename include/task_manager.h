@@ -2,6 +2,7 @@
 
 #include "log.h"
 #include "stepper_motor.h"
+#include "dc_motor.h"
 
 class TaskManager
 {
@@ -18,4 +19,5 @@ private: // Variables
     static constexpr uint8_t step_pin = 6;
 
     StepperMotor *stepper;
+    Motor *dc_motor;
 };
