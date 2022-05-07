@@ -1,131 +1,99 @@
-#pragma once
-
-#include "log.h"
-#include <thread>
-#include <atomic>
-#include <mutex>
+#include <stdio.h>
 #include <unistd.h>
+#include <stdint.h>
+#include <string.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 namespace GPIO
 {
-    enum class PI_FUNCTION : uint8_t
-    {
-        INPUT = 0b000,
-        OUTPUT = 0b001,
-        ALT_0 = 0b100,
-        ALT_1 = 0b101,
-        ALT_2 = 0b110,
-        ALT_3 = 0b111,
-        ALT_4 = 0b011,
-        ALT_5 = 0b010
-    };
+    static volatile uint32_t piPeriphBase = 0x20000000;
 
-    enum class PI_OUTPUT : bool
-    {
-        LOW = false,
-        HIGH = true
-    };
+    static volatile int pi_is_2711 = 0;
 
-    // Page 66 - https://datasheets.raspberrypi.com/bcm2711/bcm2711-peripherals.pdf
-    //
-    // Register access is as follows:
-    // Set   -  7 | HEX | 0x1C / 0x04 = 0x07 | DEC |  28 / 4 =  7
-    // Clear - 10 | HEX | 0x28 / 0x04 = 0x0A | DEC |  40 / 4 = 10
-    //
-    // Where the code looks like:
-    // gpio_reg[REG] = NEW_REG_VALUE
-    //
-    // Most '1' registers are not needed as the following formula can be used (e.g. SET1, CLR0)
-    // REG1 = REG0 + 1 (expanded to)
-    // REG1 = REG0 + (pin / 32)
-    // 32 for the 32 bits in each register
-    enum class PI_GPIO_REGISTERS : uint8_t
-    {
-        FSE0 = 0x00, // Function Select
-        FSE1 = 0x01,
-        FSE2 = 0x02,
-        FSE3 = 0x03,
-        FSE4 = 0x04,
-        FSE5 = 0x05,
-        /* RESERVED             = 0x06 */
-        SET0 = 0x07, // Set output
-        SET1 = 0x08,
-        /* RESERVED             = 0x09 */
-        CLR0 = 0x0A, // Clear output
-        CLR1 = 0x0B,
-        /* RESERVED             = 0x0C */
-        LEV0 = 0x0D, // input Level
-        LEV1 = 0x0E,
-        /* RESERVED             = 0x0F */
-        EDS0 = 0x10, // Event Detect Status
-        EDS1 = 0x11,
-        /* RESERVED             = 0x12 */
-        RED0 = 0x13, // Rising Edge Detect
-        RED1 = 0x14,
-        /* RESERVED             = 0x15 */
-        FED0 = 0x16, // Failing Edge Detect
-        FED1 = 0x17,
-        /* RESERVED             = 0x18 */
-        HDE0 = 0x19, // High Detect
-        HDE1 = 0x1A,
-        /* RESERVED             = 0x1B */
-        LDE0 = 0x1C, // Low Detect
-        LDE1 = 0x1D,
-        /* RESERVED             = 0x1E */
-        ARE0 = 0x1F, // Async Rising Edge detect
-        ARE1 = 0x20,
-        /* RESERVED             = 0x21 */
-        AFE0 = 0x22, // Async Failing Edge detect
-        AFE1 = 0x23,
-        /* RESERVED             = 0x24 - 0x38 */
-        PUP0 = 0x39, // Pull Up / Pull down
-        PUP1 = 0x3A,
-        PUP2 = 0x3B,
-        PUP3 = 0x3C
-    };
+    #define SYST_BASE (piPeriphBase + 0x003000)
+    #define DMA_BASE (piPeriphBase + 0x007000)
+    #define CLK_BASE (piPeriphBase + 0x101000)
+    #define GPIO_BASE (piPeriphBase + 0x200000)
+    #define UART0_BASE (piPeriphBase + 0x201000)
+    #define PCM_BASE (piPeriphBase + 0x203000)
+    #define SPI0_BASE (piPeriphBase + 0x204000)
+    #define I2C0_BASE (piPeriphBase + 0x205000)
+    #define PWM_BASE (piPeriphBase + 0x20C000)
+    #define BSCS_BASE (piPeriphBase + 0x214000)
+    #define UART1_BASE (piPeriphBase + 0x215000)
+    #define I2C1_BASE (piPeriphBase + 0x804000)
+    #define I2C2_BASE (piPeriphBase + 0x805000)
+    #define DMA15_BASE (piPeriphBase + 0xE05000)
 
-    // Page 129 - https://datasheets.raspberrypi.com/bcm2711/bcm2711-peripherals.pdf
-    enum class PI_PWM_REGISTERS : uint8_t
-    {
-        CTL = 0x00, // Control
-        STA = 0x01, // Status
-        DMA = 0x02, // DMA configuration
-        /* RESERVED            = 0x03 */
-        RNG1 = 0x04, // channel 1 Range
-        DAT1 = 0x05, // channel 1 Data
-        FIF = 0x06,  // FIFO Input
-        /* RESERVED            = 0x07 */
-        RNG2 = 0x08, // channel 2 Range
-        DAT2 = 0x09  // channel 2 Data
-    };
+    #define DMA_LEN 0x1000 /* allow access to all channels */
+    #define CLK_LEN 0xA8
+    #define GPIO_LEN 0xF4
+    #define SYST_LEN 0x1C
+    #define PCM_LEN 0x24
+    #define PWM_LEN 0x28
+    #define I2C_LEN 0x1C
+    #define BSCS_LEN 0x40
 
-    void gpio_init();
-    void gpio_set_function(uint8_t pin, PI_FUNCTION function);
-    void gpio_write(uint8_t pin, PI_OUTPUT output);
-    bool gpio_read(uint8_t pin);
-    uint32_t sys_tick();
-    void pwm_start(uint8_t pin);
-    void pwm_stop();
-    static void pwm_run();
-    void pwm_write(uint32_t period_us, uint32_t duty_period_us);
+    #define GPSET0 7
+    #define GPSET1 8
 
-    static std::thread pwm_thread;
-    static std::atomic<uint32_t> pwm_period;
-    static std::atomic<uint32_t> pwm_duty_period;
-    static bool pwm_state;
-    static uint8_t pwm_pin;
+    #define GPCLR0 10
+    #define GPCLR1 11
 
-    static constexpr uint32_t gpio_base_address = 0xFE200000;
-    static constexpr uint32_t gpio_len          = 0x000000F4;
-    static constexpr uint32_t pwm_base_address  = 0xFE20C000; // PWM 0
-    static constexpr uint32_t pwm_len           = 0x00000028;
-    static constexpr uint32_t sys_base_address  = 0xFE003000;
-    static constexpr uint32_t sys_len           = 0x0000001C;
+    #define GPLEV0 13
+    #define GPLEV1 14
 
-    static volatile uint32_t *gpio_memory;
-    static volatile uint32_t *pwm_memory;
-    static volatile uint32_t *sys_memory;
+    #define GPPUD 37
+    #define GPPUDCLK0 38
+    #define GPPUDCLK1 39
 
-}; //namespace GPIO
+    #define GPPUPPDN0 57
+    #define GPPUPPDN1 58
+    #define GPPUPPDN2 59
+    #define GPPUPPDN3 60
+
+    #define SYST_CS 0
+    #define SYST_CLO 1
+    #define SYST_CHI 2
+
+    static volatile uint32_t *gpioReg = static_cast<uint32_t *> MAP_FAILED;
+    static volatile uint32_t *systReg = static_cast<uint32_t *> MAP_FAILED;
+    static volatile uint32_t *bscsReg = static_cast<uint32_t *> MAP_FAILED;
+
+    #define PI_BANK (gpio >> 5)
+    #define PI_BIT (1 << (gpio & 0x1F)) // Change to _pin
+
+    #define PI_INPUT 0
+    #define PI_OUTPUT 1
+    #define PI_ALT0 4
+    #define PI_ALT1 5
+    #define PI_ALT2 6
+    #define PI_ALT3 7
+    #define PI_ALT4 3
+    #define PI_ALT5 2
+
+    #define PI_PUD_OFF 0
+    #define PI_PUD_DOWN 1
+    #define PI_PUD_UP 2
+
+    void gpioSetMode(unsigned gpio, unsigned mode);
+    int gpioGetMode(unsigned gpio);
+    void gpioSetPullUpDown(unsigned gpio, unsigned pud);
+    int gpioRead(unsigned gpio);
+    void gpioWrite(unsigned gpio, unsigned level);
+    void gpioTrigger(unsigned gpio, unsigned pulseLen, unsigned level);
+    uint32_t gpioReadBank1();
+    uint32_t gpioReadBank2();
+    void gpioClearBank1(uint32_t bits);
+    void gpioClearBank2(uint32_t bits);
+    void gpioSetBank1(uint32_t bits);
+    void gpioSetBank2(uint32_t bits);
+    unsigned gpioHardwareRevision();
+    uint32_t gpioTick();
+    static uint32_t *initMapMem(int fd, uint32_t addr, uint32_t len);
+    int gpioInitialise();
+
+} // namespace GPIO
