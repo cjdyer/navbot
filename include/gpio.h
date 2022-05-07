@@ -106,16 +106,16 @@ namespace GPIO
     void gpio_write(uint8_t pin, PI_OUTPUT output);
     bool gpio_read(uint8_t pin);
     uint32_t sys_tick();
-    void pwm_start(uint8_t pin);
-    void pwm_stop();
-    static void pwm_run();
-    void pwm_write(uint32_t period_us, uint32_t duty_period_us);
+    // void pwm_start(uint8_t pin);
+    // void pwm_stop();
+    // static void pwm_run();
+    // void pwm_write(uint32_t period_us, uint32_t duty_period_us);
 
-    static std::thread pwm_thread;
-    static std::atomic<uint32_t> pwm_period;
-    static std::atomic<uint32_t> pwm_duty_period;
-    static bool pwm_state;
-    static uint8_t pwm_pin;
+    // static std::thread pwm_thread;
+    // static std::atomic<uint32_t> pwm_period;
+    // static std::atomic<uint32_t> pwm_duty_period;
+    // static bool pwm_state;
+    // static uint8_t pwm_pin;
 
     static constexpr uint32_t gpio_base_address = 0xFE200000;
     static constexpr uint32_t gpio_len          = 0x000000F4;
