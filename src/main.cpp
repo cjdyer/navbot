@@ -1,39 +1,65 @@
-#include "task_manager.h"
+#include "ultrasonic.h"
+#include "log.h"
+#include <iostream>
+#include <string>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
-int main(int argc, char const *argv[])
+// bool processed = false;
+
+void add()
 {
-    
-    // Code to run a PWM 
-    
-    GPIO::gpio_init();
-
-    GPIO::gpio_set_function(18, GPIO::PI_FUNCTION::ALT_5); // Set Function to pwm
-    GPIO::gpio_set_function(19, GPIO::PI_FUNCTION::ALT_5); // Set Function to pwm
-
-    std::cout << "CHANNEL 1" << std::endl;
-    GPIO::pwm_start(GPIO::PI_PWM_CHANNEL::CHA_1);
-    GPIO::pwm_write(1024);
-    sleep(10);
-
-    // for (size_t i = 0; i < 10; i++)
-    // {
-    //     std::cout << GPIO::gpio_read(18) << " " << GPIO::gpio_read(19) << std::endl;
-    //     usleep(1);
-    // }
-
-    GPIO::pwm_stop(GPIO::PI_PWM_CHANNEL::CHA_1);
-
-    // std::cout << "CHANNEL 2" << std::endl;
-    // GPIO::pwm_start();
-
-    // for (size_t i = 0; i < 10; i++)
-    // {
-    //     std::cout << GPIO::gpio_read(18) << " " << GPIO::gpio_read(19) << std::endl;
-    //     usleep(1);
-    // }
-    // GPIO::pwm_stop();
-
-    // TaskManager t;
-    // t.run_tasks();
-    return 0;
+   std::cout << "Include any code you want here to be invoked in the Ultra object" << '\n';
+//    return 0;
 }
+
+int main()
+{
+    GPIO::gpioInitialise();
+    // Need to instantiate 8 ultrasonic sensors
+    Ultra N, S;
+    // , E, W, NE, NW, SW, SE;
+    S.setup(14,18, 1, &add);
+    // N.setup(17,22, 2, &add);
+    // E.setup(15,18);
+    // W.setup(15,18);
+    // NE.setup(15,18);
+    // NW.setup(15,18);
+    // SE.setup(15,18);
+    // SW.setup(15,18);
+    // a.main_test();  
+    // here we use invoke as a callback function, which calls a function add that is written to achieve a specific task. 
+    // this then allows main_test to be reused for all 8 ultrasonics. 
+    // S.ultra_setcallback(&add);
+    // N.ultra_setcallback(&add);
+    // S.invoke(&add);
+    // S.invoke(&add);
+    
+
+    // std::mutex m;
+    // std::condition_variable cv;
+    // std::string data;
+    // bool ready = false;
+    
+    // std::thread worker(&Ultra::run_ultrasonic, &a);
+
+    // while(1)
+    // {
+    //     // wait for the worker
+        
+    //         std::unique_lock<std::mutex> lk(m);
+    //         cv.wait(lk, []{return processed;}); 
+        
+        
+    //     // This is where we can do other stuff in response to the ultrasonic interrupt.
+    //     std::cout << "Back in main(), data = " << data << '\n';
+
+    //     //
+
+    //     processed = false;
+    // }
+
+    // worker.join();
+    return 0;
+};
