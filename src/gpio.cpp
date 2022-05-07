@@ -18,8 +18,8 @@ void GPIO::gpio_init()
     sys_memory  = static_cast<volatile uint32_t *>(mmap(0,  sys_len, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED | MAP_LOCKED, fd,  sys_base_address));
 
     close(fd);
-    pwm_memory[(int)PI_PWM_REGISTERS::CTL] = 0;
-    pwm_memory[(int)PI_PWM_REGISTERS::DMA] = 0;
+    // pwm_memory[(int)PI_PWM_REGISTERS::CTL] = 0;
+    // pwm_memory[(int)PI_PWM_REGISTERS::DMA] = 0;
 }
 
 void GPIO::gpio_set_function(uint8_t pin, PI_FUNCTION function)
@@ -57,33 +57,33 @@ uint32_t GPIO::sys_tick()
     return sys_memory[1]; // Clock is register 1
 }
 
-void GPIO::pwm_start(uint8_t pin)
-{
-    pwm_pin = pin;
-    pwm_state = true;
-    pwm_thread = std::thread(&GPIO::pwm_run);
-}
+// void GPIO::pwm_start(uint8_t pin)
+// {
+//     pwm_pin = pin;
+//     pwm_state = true;
+//     pwm_thread = std::thread(&GPIO::pwm_run);
+// }
 
-void GPIO::pwm_stop()
-{
-    pwm_state = false;
-    usleep(pwm_period.load());
-    pwm_thread.join();
-}
+// void GPIO::pwm_stop()
+// {
+//     pwm_state = false;
+//     usleep(pwm_period.load());
+//     pwm_thread.join();
+// }
 
-void GPIO::pwm_run()
-{
-    while(pwm_state)
-    {
-        gpio_write(pwm_pin, PI_OUTPUT::HIGH);
-        usleep(pwm_duty_period.load()); // Set the possition to 0 degrees
-        gpio_write(pwm_pin, PI_OUTPUT::LOW);
-        usleep(pwm_period.load() - pwm_duty_period.load()); 
-    }
-}
+// void GPIO::pwm_run()
+// {
+//     while(pwm_state)
+//     {
+//         gpio_write(pwm_pin, PI_OUTPUT::HIGH);
+//         usleep(pwm_duty_period.load()); // Set the possition to 0 degrees
+//         gpio_write(pwm_pin, PI_OUTPUT::LOW);
+//         usleep(pwm_period.load() - pwm_duty_period.load()); 
+//     }
+// }
 
-void GPIO::pwm_write(uint32_t period_us, uint32_t duty_period_us)
-{
-    pwm_period.store(period_us);
-    pwm_duty_period.store(duty_period_us);
-}
+// void GPIO::pwm_write(uint32_t period_us, uint32_t duty_period_us)
+// {
+//     pwm_period.store(period_us);
+//     pwm_duty_period.store(duty_period_us);
+// }
