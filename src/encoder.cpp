@@ -3,62 +3,68 @@
 
 using namespace GPIO;
 
-Encoder::Encoder(uint8_t pin_a, uint8_t pin_b) : m_pin_a(pin_a), m_pin_b(pin_b)
-{
-    gpio_set_function(m_pin_a, PI_FUNCTION::INPUT); // ENC A
-    gpio_set_function(m_pin_b, PI_FUNCTION::INPUT); // ENC B
+// #define DEBUG
 
-    m_position.store(0);
-    m_speed.store(0);
+Encoder::Encoder()
+{
+    gpio_set_function(m_pin_left_a, PI_FUNCTION::INPUT); // ENC 1A
+    gpio_set_function(m_pin_left_b, PI_FUNCTION::INPUT); // ENC 1B
+    gpio_set_function(m_pin_right_a, PI_FUNCTION::INPUT); // ENC 2A
+    gpio_set_function(m_pin_right_b, PI_FUNCTION::INPUT); // ENC 2B
+
+    m_position_left = 0;
+    m_position_right = 0;
 
     m_encoder_active = true;
     m_measure_thread = std::thread(&Encoder::measure_encoder, this);
 
-    Log::log_info("Encoder::Encoder - Encoder instance created");
+    Log::log_info("Encoder::Encoder - Encoders Created");
 }
 
 Encoder::~Encoder()
 {
     m_encoder_active = false;
     m_measure_thread.join();
-    Log::log_info("Encoder::Encoder - Encoder instance destroyed");
+    Log::log_info("Encoder::Encoder - Encoders Destroyed");
 }
 
-double Encoder::get_speed()
+int32_t Encoder::get_left_position()
 {
-    return m_speed.load();
+    return m_position_left;
+}
+
+int32_t Encoder::get_right_position()
+{
+    return m_position_right;
 }
 
 void Encoder::measure_encoder()
 {
-    static uint32_t current_time, elapsed_time, last_time= sys_tick();
-    static bool current_state, last_state = gpio_read(m_pin_a);
-    static double speed;
+    static bool current_state_left, last_state_left = gpio_read(m_pin_left_a);
+    static bool current_state_right, last_state_right = gpio_read(m_pin_right_a);
 
     while (m_encoder_active)
     {
-        current_state = gpio_read(m_pin_a);
-        current_time = sys_tick();
-        elapsed_time = current_time - last_time;
+        current_state_left = gpio_read(m_pin_left_a);
+        current_state_right = gpio_read(m_pin_right_a);
 
-        // Could make branchless??
-        if (gpio_read(m_pin_b) != current_state)
+        if (current_state_left != last_state_left) // branchless?
         {
-            m_position--;
-            speed = -1.0;
-        }
-        else
-        {
-            m_position++;
-            speed = 1.0;
+            m_position_left += ((gpio_read(m_pin_left_b) != current_state_left) * 2) - 1;
+            #if defined(DEBUG)
+                Log::log_info("Encoder::measure_encoder - Encoder left position : " + std::to_string(m_position_left));
+            #endif
         }
 
-        speed *= (speed_scalar / elapsed_time);
+        if (current_state_right != last_state_right)
+        {
+            m_position_right += ((gpio_read(m_pin_right_b) != current_state_right) * 2) - 1;
+            #if defined(DEBUG)
+                Log::log_info("Encoder::measure_encoder - Encoder right position : " + std::to_string(m_position_right));
+            #endif
+        }
 
-        m_speed.store(speed);
-
-        last_time = current_time;
-        last_state = current_state;
-        usleep(1000);
+        last_state_left = current_state_left;
+        last_state_right = current_state_right;
     }
 }

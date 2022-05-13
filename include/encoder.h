@@ -8,22 +8,28 @@
 class Encoder
 {
 public:
-    Encoder(uint8_t pin_a, uint8_t pin_b);
+    Encoder();
     ~Encoder();
     
-    double get_speed();
+    int32_t get_left_position();
+    int32_t get_right_position();
     
 private: // Functions
-    std::thread m_measure_thread;
-    std::atomic<double> m_speed;
-    std::atomic<uint32_t> m_position;
-    bool m_encoder_active;
 
     void measure_encoder();
 
 private: // Variables
-    const uint8_t m_pin_a;
-    const uint8_t m_pin_b;
+
+    std::thread m_measure_thread;
+    std::atomic<int32_t> m_position_left;
+    std::atomic<int32_t> m_position_right;
+    
+    bool m_encoder_active;
+
+    static constexpr uint8_t m_pin_left_a = 21;
+    static constexpr uint8_t m_pin_left_b = 20;
+    static constexpr uint8_t m_pin_right_a = 16;
+    static constexpr uint8_t m_pin_right_b = 12;
 
     static constexpr uint16_t speed_scalar = 1000000 / 48; // Micro Seconds to Seconds / Encoder CPR
 };

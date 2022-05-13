@@ -13,13 +13,7 @@ namespace GPIO
     enum class PI_FUNCTION : uint8_t
     {
         INPUT = 0b000,
-        OUTPUT = 0b001,
-        ALT_0 = 0b100,
-        ALT_1 = 0b101,
-        ALT_2 = 0b110,
-        ALT_3 = 0b111,
-        ALT_4 = 0b011,
-        ALT_5 = 0b010
+        OUTPUT = 0b001
     };
 
     enum class PI_OUTPUT : bool
@@ -86,46 +80,21 @@ namespace GPIO
         PUP3 = 0x3C
     };
 
-    // Page 129 - https://datasheets.raspberrypi.com/bcm2711/bcm2711-peripherals.pdf
-    enum class PI_PWM_REGISTERS : uint8_t
-    {
-        CTL = 0x00, // Control
-        STA = 0x01, // Status
-        DMA = 0x02, // DMA configuration
-        /* RESERVED            = 0x03 */
-        RNG1 = 0x04, // channel 1 Range
-        DAT1 = 0x05, // channel 1 Data
-        FIF = 0x06,  // FIFO Input
-        /* RESERVED            = 0x07 */
-        RNG2 = 0x08, // channel 2 Range
-        DAT2 = 0x09  // channel 2 Data
-    };
-
     void gpio_init();
     void gpio_set_function(uint8_t pin, PI_FUNCTION function);
     void gpio_write(uint8_t pin, PI_OUTPUT output);
+    void gpio_write(uint8_t pin, bool output);
     bool gpio_read(uint8_t pin);
     uint32_t sys_tick();
-    // void pwm_start(uint8_t pin);
-    // void pwm_stop();
-    // static void pwm_run();
-    // void pwm_write(uint32_t period_us, uint32_t duty_period_us);
-
-    // static std::thread pwm_thread;
-    // static std::atomic<uint32_t> pwm_period;
-    // static std::atomic<uint32_t> pwm_duty_period;
-    // static bool pwm_state;
-    // static uint8_t pwm_pin;
 
     static constexpr uint32_t gpio_base_address = 0xFE200000;
     static constexpr uint32_t gpio_len          = 0x000000F4;
-    static constexpr uint32_t pwm_base_address  = 0xFE20C000; // PWM 0
-    static constexpr uint32_t pwm_len           = 0x00000028;
     static constexpr uint32_t sys_base_address  = 0xFE003000;
     static constexpr uint32_t sys_len           = 0x0000001C;
 
     static volatile uint32_t *gpio_memory;
-    static volatile uint32_t *pwm_memory;
     static volatile uint32_t *sys_memory;
+
+    static std::mutex m_pin_mutex;
 
 }; //namespace GPIO
