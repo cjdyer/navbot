@@ -15,10 +15,7 @@ public:
 private: // Functions
 
 private: // Variables
-    static constexpr uint8_t enable_pin = 13;
-    static constexpr uint8_t dir_pin = 19;
-    static constexpr uint8_t step_pin = 6;
 
-    StepperMotor *stepper;
-    DCMotors *dc_motors;
+    std::unique_ptr<StepperMotor>   m_stepper;
+    std::unique_ptr<DCMotors>     m_dc_motors;
 };

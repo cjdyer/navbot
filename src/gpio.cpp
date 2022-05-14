@@ -63,6 +63,7 @@ bool GPIO::gpio_read(uint8_t pin)
 
 uint32_t GPIO::sys_tick()
 {
+    std::lock_guard<std::mutex> lk(m_sys_mutex);
     // Time in us - micro seconds 1e-6
     return sys_memory[1]; // Clock is register 1
 }

@@ -2,12 +2,11 @@
 
 using namespace GPIO;
 
-StepperMotor::StepperMotor(uint8_t step_pin, uint8_t direction_pin, uint8_t enable_pin) :
-    m_stp_pin(step_pin), m_dir_pin(direction_pin), m_ena_pin(enable_pin)
+StepperMotor::StepperMotor()
 {
-    gpio_set_function(m_stp_pin, PI_FUNCTION::OUTPUT);
-    gpio_set_function(m_dir_pin, PI_FUNCTION::OUTPUT);
-    gpio_set_function(m_ena_pin, PI_FUNCTION::OUTPUT);
+    gpio_set_function(STEPPER_MOTOR_STEP     , PI_FUNCTION::OUTPUT);
+    gpio_set_function(STEPPER_MOTOR_DIRECTION, PI_FUNCTION::OUTPUT);
+    gpio_set_function(STEPPER_MOTOR_ENABLE   , PI_FUNCTION::OUTPUT);
 
     Log::log_info("StepperMotor::StepperMotor - Stepper Motor Instance Created");
 }
@@ -26,12 +25,12 @@ void StepperMotor::go_to(float pos)
 
     if (pos > 0)
     {
-        gpio_write(m_dir_pin, PI_OUTPUT::LOW);
+        gpio_write(STEPPER_MOTOR_DIRECTION, PI_OUTPUT::LOW);
         m_target = pos * m_mircosteps_per_rev;
     }
     else
     {
-        gpio_write(m_dir_pin, PI_OUTPUT::HIGH);
+        gpio_write(STEPPER_MOTOR_DIRECTION, PI_OUTPUT::HIGH);
         m_target = -pos * m_mircosteps_per_rev;
     }
     m_stepper_pos = 0;
@@ -46,7 +45,7 @@ float StepperMotor::get_pos()
 void StepperMotor::run_stepper()
 {
     float delay;
-    gpio_write(m_ena_pin, PI_OUTPUT::LOW);
+    gpio_write(STEPPER_MOTOR_ENABLE, PI_OUTPUT::LOW);
 
     while(true)
     {
@@ -59,10 +58,10 @@ void StepperMotor::run_stepper()
             delay = m_grad * m_stepper_pos + m_starting_delay;
             delay = ((delay < m_ending_delay) * m_ending_delay) + (!(delay < m_ending_delay) * delay);
         }
-        gpio_write(m_stp_pin, PI_OUTPUT::HIGH);
+        gpio_write(STEPPER_MOTOR_STEP, PI_OUTPUT::HIGH);
         usleep(delay);
 
-        gpio_write(m_stp_pin, PI_OUTPUT::LOW);
+        gpio_write(STEPPER_MOTOR_STEP, PI_OUTPUT::LOW);
         usleep(delay);
 
         m_stepper_pos++; 
@@ -71,5 +70,5 @@ void StepperMotor::run_stepper()
             break;
     }
 
-    gpio_write(m_ena_pin, PI_OUTPUT::HIGH);
+    gpio_write(STEPPER_MOTOR_ENABLE, PI_OUTPUT::HIGH);
 }

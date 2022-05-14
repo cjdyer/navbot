@@ -4,22 +4,21 @@
 TaskManager::TaskManager()
 {    
     Log::log_info("TaskManager::TaskManager - Started Task Manager");
-    // stepper = new StepperMotor(step_pin, dir_pin, enable_pin);
-    dc_motors = new DCMotors();
+    std::unique_ptr<StepperMotor> m_stepper(new StepperMotor());
+    std::unique_ptr<DCMotors>   m_dc_motors(new DCMotors());
 }
 
 TaskManager::~TaskManager()
 {
-    // stepper->~StepperMotor();
-    dc_motors->~DCMotors();
+    m_stepper->~StepperMotor();
+    m_dc_motors->~DCMotors();
     Log::log_info("TaskManager::~TaskManager - Task Manager terminated gracefully...");
 }
 
 void TaskManager::run_tasks()
 {
-    dc_motors->set_left_target_position(100);
+    m_dc_motors->set_left_target_position(100);
     sleep(4);
-    dc_motors->disable(true);
-    dc_motors->disable(false);
+    m_dc_motors->disable();
     sleep(1);
 }

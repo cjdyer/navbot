@@ -96,5 +96,6 @@ namespace GPIO
     static volatile uint32_t *sys_memory;
 
     static std::mutex m_pin_mutex;
+    static std::mutex m_sys_mutex;
 
 }; //namespace GPIO
