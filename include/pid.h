@@ -7,8 +7,19 @@
 #include "gpio.h"
 #include "config.h"
 
-using pid_callback_t   = std::function<void(int)>;
-using pid_sensor_get_t = std::function<int(void)>;
+
+/*****
+ * 
+ * (LOOP START)
+ *   Get Sensor Value
+ *   Calculate PID 
+ *   Send Output
+ * (LOOP END)
+ * 
+ ******/
+
+using pid_callback_t   = std::function<void(int)>; // void move_motor(int pwm_value);
+using pid_sensor_get_t = std::function<int(void)>; // int get_encoder(); 
 
 class PID
 {
@@ -29,12 +40,12 @@ private:
     void pid_loop();
     
 private:
-    std::thread m_pid_thread;
-    std::mutex m_callback_mutex;
-    std::mutex m_sensor_mutex;
+    std::thread m_pid_thread;    // pid loop thread
+    std::mutex m_callback_mutex; // Callback mutex protection
+    std::mutex m_sensor_mutex;   // Sensor get mutex protection
 
-    pid_callback_t m_callback;
-    pid_sensor_get_t m_sensor_get;
+    pid_callback_t m_callback; // Callback function
+    pid_sensor_get_t m_sensor_get; // Sensor get function
 
     int32_t m_target;
 

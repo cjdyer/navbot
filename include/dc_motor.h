@@ -31,7 +31,7 @@ private:
 
     bool braking;
 
-    int32_t m_target_left;
+    int32_t m_target_left; 
     int32_t m_target_right;
 
     std::unique_ptr<PID> m_left_pid;

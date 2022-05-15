@@ -94,8 +94,8 @@ void Terminal::run_polling()
             if (output[0] == 'P') // I am a garbage coder and this is garbage code
             {
                 std::lock_guard<std::mutex> lk(m_writable_mutex);
-                m_response_recieved = true;
-                m_writable.notify_one();
+                m_response_recieved = true; // Response has been recieved
+                m_writable.notify_one();    // Notify write thread
             }
         }
     }

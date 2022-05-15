@@ -60,7 +60,7 @@ void PID::pid_loop()
         while (true)
         {
             std::unique_lock<std::mutex> lk(m_callback_mutex);
-            if(m_callback && m_sensor_get) break;
+            if(m_callback && m_sensor_get) break; // Check if we have a sensor to get and an output to give
             if(!m_pid_running) return;
             lk.unlock();
             usleep(m_timeout_us);
@@ -70,7 +70,7 @@ void PID::pid_loop()
         time_difference = current_time - last_time;
         last_time = current_time;
 
-        sensor_value = m_sensor_get();
+        sensor_value = m_sensor_get(); 
         
         // Calculate error.
         m_error = m_target - sensor_value; 
@@ -100,7 +100,7 @@ void PID::pid_loop()
         
         {
             std::lock_guard<std::mutex> lk(m_callback_mutex);
-            if(m_callback) { m_callback(output); }
+            m_callback(output); 
         }
 
         usleep(m_timeout_us);

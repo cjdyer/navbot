@@ -17,10 +17,15 @@ DCMotors::DCMotors() :
     gpio_set_function(DC_MOTOR_DIRECTION_RIGHT_A, PI_FUNCTION::OUTPUT);
     gpio_set_function(DC_MOTOR_DIRECTION_RIGHT_B, PI_FUNCTION::OUTPUT);
 
+    // Set output callback function
+    // Set sensor get function
+
+    // void DCMotors::run_right_motor(int pwm_value) ==> void (int) ==> void (placeholder int)
+    m_right_pid->set_callback(std::bind(&DCMotors::run_right_motor, this, _1)); // this ==> DCMotors*
+    m_right_pid->set_sensor_get(std::bind(&Encoder::get_right_position, m_encoder.get())); // .get() ==> smart_ptr -> Encoder*
+
     m_left_pid->set_callback(std::bind(&DCMotors::run_left_motor, this, _1));
-    m_right_pid->set_callback(std::bind(&DCMotors::run_right_motor, this, _1));
     m_left_pid->set_sensor_get(std::bind(&Encoder::get_left_position, m_encoder.get()));
-    m_right_pid->set_sensor_get(std::bind(&Encoder::get_right_position, m_encoder.get()));
 
     braking = false;
 
@@ -76,12 +81,12 @@ void DCMotors::run_left_motor(int pwm_value)
 
 void DCMotors::run_right_motor(int pwm_value)
 {
-    pwm_value = pwm_value * !braking;
+    pwm_value = pwm_value * !braking; // if braking => pwm_value = 0
 
     std::ostringstream ostr;
     ostr << (char)'R';
     ostr << std::setfill('0') << std::setw(3) << abs(pwm_value);
-    m_terminal->write_serial(ostr.str().c_str()); 
+    m_terminal->write_serial(ostr.str().c_str());
 
     bool direction = pwm_value > 0;
 
