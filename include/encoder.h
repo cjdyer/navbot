@@ -2,6 +2,7 @@
 
 #include "log.h"
 #include "gpio.h"
+#include "config.h"
 #include <atomic>
 #include <thread>
 
@@ -25,11 +26,6 @@ private: // Variables
     std::atomic<int32_t> m_position_right;
     
     bool m_encoder_active;
-
-    static constexpr uint8_t m_pin_left_a = 21;
-    static constexpr uint8_t m_pin_left_b = 20;
-    static constexpr uint8_t m_pin_right_a = 16;
-    static constexpr uint8_t m_pin_right_b = 12;
 
     static constexpr uint16_t speed_scalar = 1000000 / 48; // Micro Seconds to Seconds / Encoder CPR
 };

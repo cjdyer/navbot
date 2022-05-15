@@ -60,18 +60,6 @@ Terminal::~Terminal()
     Log::log_info("Terminal::~Terminal - Closed serial port at " + m_port);
 }
 
-void Terminal::set_read_callback(read_callback_t callback)
-{
-    std::lock_guard<std::mutex> guard(m_callback_mutex);
-    m_read_callback = callback;
-}
-
-void Terminal::unset_read_callback()
-{
-    std::lock_guard<std::mutex> guard(m_callback_mutex);
-    m_read_callback = nullptr;
-}
-
 void Terminal::start_polling()
 {
     // Terminate thread if already polling

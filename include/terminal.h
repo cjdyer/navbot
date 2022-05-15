@@ -9,20 +9,15 @@
 #include <string>
 #include <mutex>
 #include <thread>
-#include <functional>
 #include <atomic>
 #include <condition_variable>
-
-using read_callback_t = std::function<void(void)>;
+#include "config.h"
 
 class Terminal
 {
 public:
     Terminal();
     ~Terminal();
-
-    void set_read_callback(read_callback_t callback);
-    void unset_read_callback();
 
     void start_polling();
     void stop_polling();
@@ -36,12 +31,9 @@ private:
 private:
     struct termios m_config;
     int m_serial_port;
-    const std::string m_port = "/dev/ttyUSB0";
+    const std::string m_port = serial_port;
 
     std::mutex m_serial_mutex;
-
-    read_callback_t m_read_callback;
-    std::mutex m_callback_mutex; 
     std::thread m_handler_thread;
     std::atomic<bool> m_polling_condition;
 
