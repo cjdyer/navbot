@@ -14,16 +14,14 @@ void GPIO::gpio_init()
 
     // Physical Memory
     gpio_memory = static_cast<volatile uint32_t *>(mmap(0, gpio_len, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED | MAP_LOCKED, fd, gpio_base_address));
-    pwm_memory  = static_cast<volatile uint32_t *>(mmap(0,  pwm_len, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED | MAP_LOCKED, fd,  pwm_base_address));
     sys_memory  = static_cast<volatile uint32_t *>(mmap(0,  sys_len, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED | MAP_LOCKED, fd,  sys_base_address));
 
     close(fd);
-    // pwm_memory[(int)PI_PWM_REGISTERS::CTL] = 0;
-    // pwm_memory[(int)PI_PWM_REGISTERS::DMA] = 0;
 }
 
 void GPIO::gpio_set_function(uint8_t pin, PI_FUNCTION function)
 {
+    std::lock_guard<std::mutex> lk(m_pin_mutex);
     uint8_t reg = pin / 10; // Will be equal to the FSEL register for the given pin
     uint8_t shift = (pin % 10) * 3;
 
@@ -37,6 +35,7 @@ void GPIO::gpio_set_function(uint8_t pin, PI_FUNCTION function)
 
 void GPIO::gpio_write(uint8_t pin, PI_OUTPUT output)
 {
+    std::lock_guard<std::mutex> lk(m_pin_mutex);
     // If output is high (true) we want to set the bit, if low we want to clear the bit
     // We then add pin / 32 to the reg to access SET1 and CLR1 if the pin is > 32
     // Finally, we get the pin itself by using pin mod 32, and shifting a 1 to that index
@@ -44,8 +43,19 @@ void GPIO::gpio_write(uint8_t pin, PI_OUTPUT output)
     gpio_memory[reg + (pin / 32)] = 1 << (pin % 32);
 }
 
+void GPIO::gpio_write(uint8_t pin, bool output)
+{
+    std::lock_guard<std::mutex> lk(m_pin_mutex);
+    // If output is high (true) we want to set the bit, if low we want to clear the bit
+    // We then add pin / 32 to the reg to access SET1 and CLR1 if the pin is > 32
+    // Finally, we get the pin itself by using pin mod 32, and shifting a 1 to that index
+    uint8_t reg = (int)PI_GPIO_REGISTERS::SET0 + (!(output) * 3);
+    gpio_memory[reg + (pin / 32)] = 1 << (pin % 32);
+}
+
 bool GPIO::gpio_read(uint8_t pin)
 {
+    std::lock_guard<std::mutex> lk(m_pin_mutex);
     // This is the same logic as writing the pin, but in reverse
     uint8_t shift = (pin % 32);
     return (gpio_memory[(int)PI_GPIO_REGISTERS::LEV0 + (pin / 32)] & (1 << shift)) >> shift;
@@ -53,37 +63,7 @@ bool GPIO::gpio_read(uint8_t pin)
 
 uint32_t GPIO::sys_tick()
 {
+    std::lock_guard<std::mutex> lk(m_sys_mutex);
     // Time in us - micro seconds 1e-6
     return sys_memory[1]; // Clock is register 1
 }
-
-// void GPIO::pwm_start(uint8_t pin)
-// {
-//     pwm_pin = pin;
-//     pwm_state = true;
-//     pwm_thread = std::thread(&GPIO::pwm_run);
-// }
-
-// void GPIO::pwm_stop()
-// {
-//     pwm_state = false;
-//     usleep(pwm_period.load());
-//     pwm_thread.join();
-// }
-
-// void GPIO::pwm_run()
-// {
-//     while(pwm_state)
-//     {
-//         gpio_write(pwm_pin, PI_OUTPUT::HIGH);
-//         usleep(pwm_duty_period.load()); // Set the possition to 0 degrees
-//         gpio_write(pwm_pin, PI_OUTPUT::LOW);
-//         usleep(pwm_period.load() - pwm_duty_period.load()); 
-//     }
-// }
-
-// void GPIO::pwm_write(uint32_t period_us, uint32_t duty_period_us)
-// {
-//     pwm_period.store(period_us);
-//     pwm_duty_period.store(duty_period_us);
-// }

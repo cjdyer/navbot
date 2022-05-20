@@ -6,34 +6,36 @@
 #include <iostream>
 #include <unistd.h>
 #include "gpio.h"
+#include "encoder.h"
+#include "terminal.h"
+#include "pid.h"
+#include "config.h"
 
-class Motor
+class DCMotors
 {
 public: 
-    Motor(uint8_t pin_dir, uint8_t pin_pwm, uint8_t pin_enc_a, uint8_t pin_enc_b);
-    ~Motor();
+    DCMotors();
+    ~DCMotors();
 
-    void encoder_position();
-    void run_with_pid_control(int target_speed);
-    void runMotor(int dir, int pwmVal);
+    void disable();
+    void enable();
+
+    void set_position_targets(int32_t left_target, int32_t right_target);
 
 private:
-    // std::atomic<uint32_t> pos;
-    std::thread th;
-    int position;
-    long double speed;
-    float pwr;  
 
-    const uint8_t m_pin_dir;
-    const uint8_t m_pin_pwm;
-    const uint8_t m_pin_enc_a;
-    const uint8_t m_pin_enc_b;
+    void run_left_motor(int pwm_val);
+    void run_right_motor(int pwm_val); 
 
-    uint16_t m_encoder_value;
+private:
 
-    // PID constants
-    static constexpr float kp = 1;
-    static constexpr float kd = 0.025;
-    static constexpr float ki = 0.0;
-  
+    bool braking;
+
+    int32_t m_target_left; 
+    int32_t m_target_right;
+
+    std::unique_ptr<PID> m_left_pid;
+    std::unique_ptr<PID> m_right_pid;
+    std::unique_ptr<Terminal> m_terminal;
+    std::unique_ptr<Encoder> m_encoder;
 };
