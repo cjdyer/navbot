@@ -4,25 +4,25 @@
 #include <thread>
 #include "gpio.h"
 #include "log.h"
+#include "config.h"
 
 class StepperMotor
 {
 public:
-    StepperMotor(uint8_t step_pin, uint8_t direction_pin, uint8_t enable_pin);
+    StepperMotor();
     ~StepperMotor();
 
     void enable_stepper();
     void disable_stepper();
+
     float get_pos();
     void go_to(float pos);
 
 private:
+
     void run_stepper();
 
 private:
-    const uint8_t m_stp_pin;
-    const uint8_t m_dir_pin;
-    const uint8_t m_ena_pin;
 
     std::thread m_run_thread;
 

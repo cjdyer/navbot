@@ -1,108 +1,95 @@
 #include "dc_motor.h"
-#include "encoder.h"
 #include <chrono>
+#include <sstream>
+#include <iomanip>
 
 using namespace GPIO;
+using std::placeholders::_1;
 
-Motor::Motor(uint8_t pin_dir, uint8_t pin_pwm, uint8_t pin_enc_a, uint8_t pin_enc_b) : m_pin_dir(pin_dir), m_pin_pwm(pin_pwm), m_pin_enc_a(pin_enc_a), m_pin_enc_b(pin_enc_b)
+DCMotors::DCMotors() : 
+    m_left_pid(std::make_unique<PID>(left_drive_pid_base)), 
+    m_right_pid(std::make_unique<PID>(right_drive_pid_base)),
+    m_encoder(std::make_unique<Encoder>()),
+    m_terminal(std::make_unique<Terminal>())
 {
-    gpio_set_function(m_pin_dir, PI_FUNCTION::OUTPUT);
-    gpio_set_function(m_pin_pwm, PI_FUNCTION::ALT_0);
-    gpio_set_function(m_pin_enc_a, PI_FUNCTION::INPUT);
-    gpio_set_function(m_pin_enc_b, PI_FUNCTION::INPUT); // get a segmentation fault when included...
+    gpio_set_function(DC_MOTOR_DIRECTION_LEFT_A , PI_FUNCTION::OUTPUT);
+    gpio_set_function(DC_MOTOR_DIRECTION_LEFT_B , PI_FUNCTION::OUTPUT);
+    gpio_set_function(DC_MOTOR_DIRECTION_RIGHT_A, PI_FUNCTION::OUTPUT);
+    gpio_set_function(DC_MOTOR_DIRECTION_RIGHT_B, PI_FUNCTION::OUTPUT);
 
-    position = 0;
+    // Set output callback function
+    // Set sensor get function
 
-    pwr = 0; // start the pwd signal at 0 and increase to the required speed.
-    pwm_start(m_pin_pwm);
+    // void DCMotors::run_right_motor(int pwm_value) ==> void (int) ==> void (placeholder int)
+    m_right_pid->set_callback(std::bind(&DCMotors::run_right_motor, this, _1)); // this ==> DCMotors*
+    m_right_pid->set_sensor_get(std::bind(&Encoder::get_right_position, m_encoder.get())); // .get() ==> smart_ptr -> Encoder*
 
-    std::cout << "constructor" << std::endl;
-    th = std::thread(&Motor::encoder_position, this);
+    m_left_pid->set_callback(std::bind(&DCMotors::run_left_motor, this, _1));
+    m_left_pid->set_sensor_get(std::bind(&Encoder::get_left_position, m_encoder.get()));
+
+    braking = false;
+
+    Log::log_info("DCMotors::DCMotors - Motors Created");
 }
 
-Motor::~Motor()
+DCMotors::~DCMotors()
 {
-    th.join();
-    pwm_stop();
+    m_left_pid->unset_callback();
+    m_right_pid->unset_callback();
+    m_left_pid->unset_sensor_get();
+    m_right_pid->unset_sensor_get();
+    
+    Log::log_info("DCMotors::~DCMotors - Motors Destroyed");
 }
 
-void Motor::encoder_position() // Function to grab position data from encoder code, entered into thread to run continuously.
+void DCMotors::set_position_targets(int32_t left_target, int32_t right_target)
 {
-    Encoder E(m_pin_enc_a, m_pin_enc_b);
-    while (1)
-    {
-        speed = E.get_speed();
-        usleep(100000);
-    }
-
+    m_left_pid->set_target(left_target);
+    m_right_pid->set_target(right_target);
 }
 
-void Motor::run_with_pid_control(int target_speed) // Function to grab position data from encoder code, entered into thread to run continuously.
+void DCMotors::disable() 
 {
-    float eintegral = 0;
-    float eprev = 0;
-    std::chrono::_V2::system_clock::time_point prevT;
-
-    while (1)
-    {
-        // time diff for delta
-        auto start = std::chrono::high_resolution_clock::now();
-        double microseconds = start.time_since_epoch().count() - prevT.time_since_epoch().count();
-        // error
-        float error = target_speed - speed;
-        // derivative
-        float derivative = (error - eprev) / microseconds;
-        // integral
-        eintegral += error * microseconds;
-
-        // control signal
-        float u = kp * error + kd * derivative + ki * eintegral;
-
-        // motor power
-        pwr += u;
-        
-        if (pwr > 255)
-        { 
-            pwr = 255;
-        }
-        else if (pwr < 0)
-        {
-            pwr = 0;
-        }
-
-        // motor direction needs to be set based on direction of current travel, established from speed direction.
-        int dir = 1;
-        if (speed < 0)
-        {
-            dir = -1;
-        }
-
-        std::cout << "speed " << speed << std::endl;
-        std::cout << "u " << u << std::endl;
-        std::cout << "pwr " << pwr << std::endl;
-        std::cout << "dir " << dir << std::endl;
-
-        // Finally run the motor at the calculated speed and direction from PID calcs.
-        runMotor(dir,pwr);  // Segmentation fault atm
-
-        // sleep abit to slow PID down to reasonable measurements
-        usleep(10000);
-        
-        eprev = error;
-        prevT = std::chrono::high_resolution_clock::now();
-    }
+    braking = true; 
 }
 
-void Motor::runMotor(int dir, int pwmVal) // function to set the motor running
+void DCMotors::enable() 
 {
-    const uint8_t input_pwm_period = pwmVal*20/255;
-    pwm_write(20, pwmVal);   // analogue write gpio function is needed
-    if (dir == 1)
-    {
-        gpio_write(m_pin_dir, PI_OUTPUT::HIGH);
-    }
-    else
-    {
-        gpio_write(m_pin_dir, PI_OUTPUT::LOW);
-    }
+    braking = false; 
+}
+
+void DCMotors::run_left_motor(int pwm_value) 
+{
+    pwm_value = pwm_value * !braking;
+
+    //! TODO: Tidy this function and its pair (right motor)
+    //        Creating an ostringstream ever time we call
+    //        this function seems like a bad idea.
+    //        Same can be said for the formatting done
+    std::ostringstream ostr; 
+    ostr << (char)'L';
+    ostr << std::setfill('0') << std::setw(3) << abs(pwm_value);
+    m_terminal->write_serial(ostr.str().c_str());
+
+    bool direction = pwm_value > 0;
+
+    gpio_write(DC_MOTOR_DIRECTION_LEFT_A, direction);
+    gpio_write(DC_MOTOR_DIRECTION_LEFT_B, direction);
+
+    //std::cout << gpio_read(DC_MOTOR_DIRECTION_LEFT_A) << gpio_read(DC_MOTOR_DIRECTION_LEFT_B) << std::endl;
+}
+
+void DCMotors::run_right_motor(int pwm_value)
+{
+    pwm_value = pwm_value * !braking; // if braking => pwm_value = 0
+
+    std::ostringstream ostr;
+    ostr << (char)'R';
+    ostr << std::setfill('0') << std::setw(3) << abs(pwm_value);
+    m_terminal->write_serial(ostr.str().c_str());
+
+    bool direction = pwm_value > 0;
+
+    gpio_write(DC_MOTOR_DIRECTION_RIGHT_A, direction);
+    gpio_write(DC_MOTOR_DIRECTION_RIGHT_B, !direction);
 }
