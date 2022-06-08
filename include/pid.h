@@ -7,6 +7,7 @@
 #include "gpio.h"
 #include "config.h"
 
+<<<<<<< HEAD
 
 /*****
  * 
@@ -21,12 +22,15 @@
 using pid_callback_t   = std::function<void(int)>; // void move_motor(int pwm_value);
 using pid_sensor_get_t = std::function<int(void)>; // int get_encoder(); 
 
+=======
+>>>>>>> Final Code
 class PID
 {
 public:
     PID(const PID_Base &pid_base);
     ~PID();
 
+<<<<<<< HEAD
     void set_callback(pid_callback_t callback);
     void unset_callback();
 
@@ -48,12 +52,23 @@ private:
     pid_sensor_get_t m_sensor_get; // Sensor get function
 
     int32_t m_target;
+=======
+    double calculate(float error);
+    
+private:
+>>>>>>> Final Code
 
     const PID_Base m_pid_base;
 
     int16_t m_error, m_derivative;
+<<<<<<< HEAD
 
     bool m_pid_running;
+=======
+    int32_t past_error;
+    uint64_t last_time, current_time, time_difference;
+    double integral, output;
+>>>>>>> Final Code
 
     static constexpr uint8_t  m_timeout_ms = 10;
     static constexpr uint16_t m_timeout_us = m_timeout_ms * 1000;

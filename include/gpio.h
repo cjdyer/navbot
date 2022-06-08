@@ -85,7 +85,7 @@ namespace GPIO
     void gpio_write(uint8_t pin, PI_OUTPUT output);
     void gpio_write(uint8_t pin, bool output);
     bool gpio_read(uint8_t pin);
-    uint32_t sys_tick();
+    uint64_t sys_tick();
 
     static constexpr uint32_t gpio_base_address = 0xFE200000;
     static constexpr uint32_t gpio_len          = 0x000000F4;

@@ -117,7 +117,7 @@ void Terminal::write_serial(const char* _msg)
 
     std::lock_guard<std::mutex> guard(m_serial_mutex);
     write(m_serial_port, _msg, strlen(_msg));
-    #if defined(DEBUG)
+    #ifdef DEBUG
         Log::log_info("Terminal::write_serial - " + std::string(reinterpret_cast<const char*>(_msg)));
     #endif 
 

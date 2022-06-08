@@ -1,10 +1,15 @@
 #include "pid.h"
 
+<<<<<<< HEAD
 #define sgn(_n) ( ((_n) > 0) * 1 + ((_n) < 0) * -1 )
+=======
+#define sgn(_n) (((_n) > 0) * 1 + ((_n) < 0) * -1)
+>>>>>>> Final Code
 
 PID::PID(const PID_Base &pid_base)
     : m_pid_base(pid_base)
 {
+<<<<<<< HEAD
     m_pid_running = true;
     m_pid_thread = std::thread(&PID::pid_loop, this);
 
@@ -105,4 +110,40 @@ void PID::pid_loop()
 
         usleep(m_timeout_us);
     }
+=======
+    Log::log_info("PID::PID - PID Created : " + m_pid_base.name);
+}
+
+PID::~PID()
+{
+    Log::log_info("PID::~PID - PID Destroyed : " + m_pid_base.name);
+}
+
+double PID::calculate(float error)
+{
+    // Calculate integral (If conditions are met).
+    integral += error;
+
+    if ((abs(error) > m_pid_base.integral_begin) || (error == 0) || (sgn(integral) != sgn(error)))
+        integral = 0;
+    else if (abs(integral) > m_pid_base.integral_max)
+        integral = m_pid_base.integral_max * sgn(integral);
+
+    // Calculate derivative.
+    m_derivative = (error - past_error);
+
+    // Calculate output.
+    output = m_pid_base.constants.kP * error +
+             m_pid_base.constants.kI * integral +
+             m_pid_base.constants.kD * m_derivative;
+
+    // Restrict output to max/min.
+    if (abs(output) > m_pid_base.max_output)
+        output = m_pid_base.max_output * sgn(output);
+
+    // Save previous sensor value.
+    past_error = error;
+
+    return output;
+>>>>>>> Final Code
 }

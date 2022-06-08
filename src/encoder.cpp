@@ -30,12 +30,12 @@ Encoder::~Encoder()
 
 int32_t Encoder::get_left_position()
 {
-    return m_position_left;
+    return m_position_left.load();
 }
 
 int32_t Encoder::get_right_position()
 {
-    return m_position_right;
+    return m_position_right.load();
 }
 
 void Encoder::measure_encoder()

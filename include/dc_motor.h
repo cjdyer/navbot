@@ -1,12 +1,7 @@
 #pragma once
 
-#include <cstdint>
-#include <atomic>
-#include <thread>
-#include <iostream>
-#include <unistd.h>
 #include "gpio.h"
-#include "encoder.h"
+#include "config.h"
 #include "terminal.h"
 #include "pid.h"
 #include "config.h"
@@ -17,6 +12,7 @@ public:
     DCMotors();
     ~DCMotors();
 
+<<<<<<< HEAD
     void disable();
     void enable();
 
@@ -38,4 +34,15 @@ private:
     std::unique_ptr<PID> m_right_pid;
     std::unique_ptr<Terminal> m_terminal;
     std::unique_ptr<Encoder> m_encoder;
+=======
+    void run_left_motor(int pwm_val);
+    void run_right_motor(int pwm_val); 
+
+private:
+
+    int32_t m_target_left; 
+    int32_t m_target_right;
+
+    std::unique_ptr<Terminal>      m_terminal;
+>>>>>>> Final Code
 };

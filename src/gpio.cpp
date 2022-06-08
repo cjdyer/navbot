@@ -35,12 +35,7 @@ void GPIO::gpio_set_function(uint8_t pin, PI_FUNCTION function)
 
 void GPIO::gpio_write(uint8_t pin, PI_OUTPUT output)
 {
-    std::lock_guard<std::mutex> lk(m_pin_mutex);
-    // If output is high (true) we want to set the bit, if low we want to clear the bit
-    // We then add pin / 32 to the reg to access SET1 and CLR1 if the pin is > 32
-    // Finally, we get the pin itself by using pin mod 32, and shifting a 1 to that index
-    uint8_t reg = (int)PI_GPIO_REGISTERS::SET0 + (!((bool)output) * 3);
-    gpio_memory[reg + (pin / 32)] = 1 << (pin % 32);
+    gpio_write(pin, (bool)output);
 }
 
 void GPIO::gpio_write(uint8_t pin, bool output)
@@ -49,7 +44,7 @@ void GPIO::gpio_write(uint8_t pin, bool output)
     // If output is high (true) we want to set the bit, if low we want to clear the bit
     // We then add pin / 32 to the reg to access SET1 and CLR1 if the pin is > 32
     // Finally, we get the pin itself by using pin mod 32, and shifting a 1 to that index
-    uint8_t reg = (int)PI_GPIO_REGISTERS::SET0 + (!(output) * 3);
+    uint8_t reg = (int)PI_GPIO_REGISTERS::SET0 + (!output * 3);
     gpio_memory[reg + (pin / 32)] = 1 << (pin % 32);
 }
 
@@ -61,9 +56,11 @@ bool GPIO::gpio_read(uint8_t pin)
     return (gpio_memory[(int)PI_GPIO_REGISTERS::LEV0 + (pin / 32)] & (1 << shift)) >> shift;
 }
 
-uint32_t GPIO::sys_tick()
+uint64_t GPIO::sys_tick()
 {
     std::lock_guard<std::mutex> lk(m_sys_mutex);
     // Time in us - micro seconds 1e-6
-    return sys_memory[1]; // Clock is register 1
+    uint64_t low_byte  = sys_memory[1];
+    uint64_t high_byte = sys_memory[2] << 32;
+    return low_byte + high_byte; // Clock is register 1 for low bits and 2 for high bits
 }
