@@ -6,7 +6,11 @@ StepperMotor::StepperMotor()
 {
     gpio_set_function(STEPPER_MOTOR_STEP     , PI_FUNCTION::OUTPUT);
     gpio_set_function(STEPPER_MOTOR_DIRECTION, PI_FUNCTION::OUTPUT);
+<<<<<<< HEAD
     gpio_set_function(STEPPER_MOTOR_ENABLE   , PI_FUNCTION::OUTPUT);
+=======
+    gpio_set_function(STEPPER_MOTOR_ENABLE, PI_FUNCTION::OUTPUT);
+>>>>>>> Final Code
 
     Log::log_info("StepperMotor::StepperMotor - Stepper Motor Instance Created");
 }
@@ -45,7 +49,13 @@ float StepperMotor::get_pos()
 void StepperMotor::run_stepper()
 {
     float delay;
+<<<<<<< HEAD
     gpio_write(STEPPER_MOTOR_ENABLE, PI_OUTPUT::LOW);
+=======
+
+    gpio_write(STEPPER_MOTOR_ENABLE, PI_OUTPUT::LOW);
+    stepper_done = false;
+>>>>>>> Final Code
 
     while(true)
     {
@@ -58,6 +68,10 @@ void StepperMotor::run_stepper()
             delay = m_grad * m_stepper_pos + m_starting_delay;
             delay = ((delay < m_ending_delay) * m_ending_delay) + (!(delay < m_ending_delay) * delay);
         }
+<<<<<<< HEAD
+=======
+
+>>>>>>> Final Code
         gpio_write(STEPPER_MOTOR_STEP, PI_OUTPUT::HIGH);
         usleep(delay);
 
@@ -66,9 +80,14 @@ void StepperMotor::run_stepper()
 
         m_stepper_pos++; 
 
-        if (m_stepper_pos == m_target)
+        if (m_stepper_pos > m_target)
             break;
     }
+<<<<<<< HEAD
 
     gpio_write(STEPPER_MOTOR_ENABLE, PI_OUTPUT::HIGH);
+=======
+    gpio_write(STEPPER_MOTOR_ENABLE, PI_OUTPUT::HIGH);
+    stepper_done = true;
+>>>>>>> Final Code
 }
